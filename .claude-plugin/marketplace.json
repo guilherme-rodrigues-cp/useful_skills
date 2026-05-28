@@ -1,0 +1,14 @@
+{
+  "name": "useful-skills",
+  "owner": {
+    "name": "Guilherme Rodrigues",
+    "url": "https://github.com/guilherme-rodrigues-cp"
+  },
+  "plugins": [
+    {
+      "name": "useful-skills",
+      "source": "./plugins/useful-skills",
+      "description": "Team skills package — starts with self-organization (interactive daily digest from Slack + optional Notion). Works in Claude Code and Cowork."
+    }
+  ]
+}

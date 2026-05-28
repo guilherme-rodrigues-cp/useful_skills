@@ -3,9 +3,9 @@ name: self-organization
 description: >-
   Interactive, source-agnostic daily digest from the user's own tools (Slack channels/DMs + optional
   Notion meetings) for any time window they choose — and optionally scheduled.
-  On run it (0) makes sure the required MCP servers are installed, (1) identifies the current user,
-  then asks what to include: which Slack channels, whether to add Notion meetings, the time window,
-  and whether to schedule it.
+  On run it (0) makes sure the required MCP servers / connectors are available, (1) identifies the
+  current user, then asks what to include: which Slack channels, whether to add Notion meetings, the
+  time window, and whether to schedule it.
   Use when asked for "daily summary", "daily digest", "what happened today/this week", "/self-organization".
   Nothing is hardcoded to a specific person — it discovers the user and asks for the rest.
 ---
@@ -17,29 +17,48 @@ optionally, their **Notion** meetings, for whatever **time window** they pick �
 **schedule** it to be delivered automatically. The skill configures itself per user: it discovers
 who is running it and asks for everything else. Do not assume any specific person, channel, or ID.
 
+## Platform notes — Claude Code vs Cowork
+
+This skill ships in the `useful-skills` plugin and runs on both **Claude Code** and **Claude Cowork**.
+The digest logic is identical; two mechanics differ by platform:
+
+- **Data sources (MCP / connectors).** In **Claude Code** the skill can install MCP servers itself with
+  `claude mcp add` (Step 0). In **Cowork** there is no `claude mcp` CLI — the equivalent is
+  **Connectors**: Slack and Notion are set up as connectors (in the app, or admin-provisioned), then
+  authenticated. Either way you end up with `slack_*` / `notion-*` tools; if a required one is missing
+  and you can't enable it, tell the user how to add it on their platform and stop rather than producing
+  an empty digest.
+- **Scheduling (Step 5).** `/schedule` is a Claude Code feature and isn't available in Cowork today.
+  On Cowork, skip scheduling (the user triggers the skill manually).
+
 ---
 
-## Step 0 — Make sure the required MCP servers are installed
+## Step 0 — Make sure the required data sources are available
 
-Before gathering anything, confirm the tools this skill needs are available; install what's missing.
+Before gathering anything, confirm the tools this skill needs are available; install/enable what's missing.
 
-1. **Check what's installed.** Run `claude mcp list` (Bash) and also check whether the tools are
-   already exposed in this session (tool names like `mcp__*slack*` and `mcp__*notion*`).
-2. **Slack (required).** If no Slack MCP is present, install the one your org uses. Common patterns:
-   - Hosted/HTTP: `claude mcp add --transport http slack <SLACK_MCP_URL>`
-   - stdio server with a token: `claude mcp add slack -- npx -y @modelcontextprotocol/server-slack`
-     (needs `SLACK_BOT_TOKEN` / `SLACK_TEAM_ID` in the env)
+1. **Check what's available.** Look at whether the tools are already exposed in this session (tool names
+   like `mcp__*slack*` / `slack_*` and `mcp__*notion*` / `notion-*`). On Claude Code you can also run
+   `claude mcp list` (Bash).
+2. **Slack (required).** If no Slack tools are present:
+   - **Claude Code:** install the Slack MCP your org uses. Common patterns:
+     - Hosted/HTTP: `claude mcp add --transport http slack <SLACK_MCP_URL>`
+     - stdio server with a token: `claude mcp add slack -- npx -y @modelcontextprotocol/server-slack`
+       (needs `SLACK_BOT_TOKEN` / `SLACK_TEAM_ID` in the env)
+   - **Cowork:** enable the **Slack connector** (Settings → Connectors, or ask an admin) and authenticate.
 
-   The exact Slack MCP/URL is org-specific — if you can't determine it, ask the user which Slack MCP
-   to add instead of guessing.
+   The exact Slack MCP/connector is org-specific — if you can't determine it, ask the user instead of guessing.
 3. **Notion (only if they want meetings — can be deferred until after question 2).** If missing:
-   `claude mcp add --transport http notion https://mcp.notion.com/mcp`
-4. **Authenticate.** Remote/hosted MCPs need OAuth — after adding one, ask the user to complete the
-   browser sign-in (or run `/mcp`) before its tools will work. Re-check `claude mcp list` to confirm
-   the server shows as connected.
+   - **Claude Code:** `claude mcp add --transport http notion https://mcp.notion.com/mcp`
+   - **Cowork:** enable the **Notion connector** and authenticate.
+4. **Authenticate.** Remote/hosted MCPs and connectors use OAuth — after adding one, ask the user to
+   complete the browser sign-in (Claude Code: also `/mcp`) before its tools will work. Re-check that the
+   source shows as connected.
 
-If a required server can't be installed or authenticated, tell the user plainly and stop rather than
+If a required source can't be enabled or authenticated, tell the user plainly and stop rather than
 producing a half-empty digest.
+
+> **Cowork:** there is no `claude mcp` CLI — set Slack/Notion up as **Connectors** instead (see Platform notes).
 
 ## Step 1 — Identify the current user (no hardcoding)
 
@@ -61,11 +80,12 @@ batch them into a single message:
    them to type the channel names/handles; optionally offer to auto-detect the channels they belong to
    (`slack_search_channels`) only if they'd rather pick from a list. Resolve whatever they give to
    channel **IDs**.
-2. **Do you want a summary of your Notion meetings?** (yes / no). If yes and Notion isn't installed or
+2. **Do you want a summary of your Notion meetings?** (yes / no). If yes and Notion isn't available or
    authenticated, do Step 0 for Notion now.
 3. **What time window?** Offer: **last 24h**, **48h**, **72h**, **1 week**, or **custom** (let them
    type any range, e.g. "since Monday", "last 3 days", a date range).
-4. **Do you want to schedule this?** (yes / no). If yes, go to Step 5 after producing the first digest.
+4. **Do you want to schedule this?** (yes / no — Claude Code only). If yes, go to Step 5 after producing
+   the first digest.
 
 > **Remember the answers.** Optionally persist the choices to `~/.claude/self-organization.config.json`
 > (channels, include-notion, default window, schedule) so future runs can skip the questions unless the
@@ -143,7 +163,10 @@ Right after assembling, **send the digest as a Slack DM to the current user — 
 - This happens on **every run** of the skill, not just scheduled ones; also show the digest in the chat.
 - Return the message link to the user.
 
-## Step 5 — Optional scheduling (if Q4 = yes)
+## Step 5 — Optional scheduling (Claude Code only; if Q4 = yes)
+
+> Scheduling uses `/schedule` (remote agents on cron), which is a **Claude Code** feature — it isn't
+> available in Cowork today. On Cowork, skip this step and have the user run the skill manually.
 
 Deliver the digest automatically, as a Slack DM to the user (themselves).
 
@@ -164,3 +187,5 @@ Deliver the digest automatically, as a Slack DM to the user (themselves).
 - **Elastic sources:** Slack is the core; Notion is opt-in; the same shape welcomes new sources later
   (email, calendar, GitHub) — add a gathering block + a section, and keep ⚡ at the top consolidating
   actions across all sources.
+- **Cross-platform:** keep platform-specific mechanics (MCP CLI vs connectors, scheduling) behind the
+  Platform notes so the core digest logic stays identical on Claude Code and Cowork.

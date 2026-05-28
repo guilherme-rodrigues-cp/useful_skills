@@ -1,23 +1,27 @@
-# INSTALL.md — installation playbook (for Claude Code)
+# INSTALL.md — manual install playbook (for Claude Code, from a clone)
 
-This file is the **installer** for the `useful_skills` package. A teammate clones the repo
-and asks Claude Code to *"read INSTALL.md and install the skills"*. When that happens, follow
-these steps in order. Keep the user informed and **pause for authentication** where noted.
+This is the **manual / development** install path for **Claude Code** — for when someone clones the repo
+instead of installing the plugin from the marketplace. (The recommended path is `/plugin marketplace add`
++ `/plugin install` — see the README. For **Cowork**, see `COWORK.md`.)
+
+A teammate clones the repo and asks Claude Code to *"read INSTALL.md and install the skills"*. When that
+happens, follow these steps in order. Keep the user informed and **pause for authentication** where noted.
 
 ## Step 1 — Locate the cloned repo
 
-Figure out the absolute path of the folder that contains this `INSTALL.md` (the cloned repo).
-If Claude Code was opened inside it, that's the current working directory; otherwise ask the user
-where they cloned it. Call that path `$REPO` for the rest of these steps.
+Figure out the absolute path of the folder that contains this `INSTALL.md` (the cloned repo). If Claude
+Code was opened inside it, that's the current working directory; otherwise ask the user where they cloned
+it. Call that path `$REPO`. The skills live under `$REPO/plugins/useful-skills/skills/`.
 
 ## Step 2 — Activate every skill in the package
 
-Each skill is a subfolder of `$REPO` that contains a `SKILL.md`. Claude Code only loads skills from
-`~/.claude/skills/<name>/SKILL.md`, so link each one in there:
+Each skill is a subfolder of `$REPO/plugins/useful-skills/skills/` that contains a `SKILL.md`. Claude Code
+loads skills from `~/.claude/skills/<name>/SKILL.md`, so link each one in there:
 
 ```bash
+SKILLS_DIR="$REPO/plugins/useful-skills/skills"
 mkdir -p ~/.claude/skills
-for d in "$REPO"/*/; do
+for d in "$SKILLS_DIR"/*/; do
   [ -f "${d}SKILL.md" ] || continue
   src="${d%/}"; name=$(basename "$src")
   ln -sfn "$src" "$HOME/.claude/skills/$name"   # symlink → stays in sync with `git pull`
@@ -32,7 +36,7 @@ done
 
 ## Step 3 — Install the MCP servers each skill needs
 
-Skills declare their required MCPs in their own `SKILL.md` (Step 0). For the current package:
+Skills declare their required data sources in their own `SKILL.md` (Step 0). For the current package:
 
 | Skill | Needs |
 |---|---|
@@ -75,6 +79,7 @@ empty digest.
 ---
 
 ### Maintainer notes
-- **Adding a skill** = drop a `<name>/SKILL.md` folder in the repo; the loop in Step 2 picks it up
-  automatically. If it needs new MCP servers, add a row to the table in Step 3.
+- **Adding a skill** = drop a `<name>/SKILL.md` folder under `plugins/useful-skills/skills/`; the loop in
+  Step 2 picks it up automatically, and the plugin install path gets it for free. If it needs new MCP
+  servers, add a row to the table in Step 3.
 - Keep skills **agnostic** (no hardcoded person/channel/id) so this installer stays a no-config handoff.

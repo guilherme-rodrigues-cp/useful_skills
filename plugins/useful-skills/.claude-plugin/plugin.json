@@ -1,0 +1,15 @@
+{
+  "name": "useful-skills",
+  "displayName": "useful_skills",
+  "version": "0.1.0",
+  "description": "Team skills package for Claude Code & Cowork. Starts with self-organization: an interactive, source-agnostic daily digest from Slack (+ optional Notion meetings).",
+  "author": {
+    "name": "Guilherme Rodrigues",
+    "url": "https://github.com/guilherme-rodrigues-cp"
+  },
+  "homepage": "https://github.com/guilherme-rodrigues-cp/useful_skills",
+  "repository": "https://github.com/guilherme-rodrigues-cp/useful_skills",
+  "license": "MIT",
+  "keywords": ["skills", "daily-digest", "slack", "notion", "cowork", "self-organization"],
+  "installationPreference": "available"
+}
